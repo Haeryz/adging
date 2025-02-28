@@ -55,6 +55,10 @@ def direct_gemini_request(prompt):
     else:
         return f"Error: {response.status_code} - {response.text}"
 
+def split_message(message, max_length=2000):
+    """Split a message into chunks of a specified maximum length."""
+    return [message[i:i+max_length] for i in range(0, len(message), max_length)]
+
 @client.event
 async def on_ready():
     print(f'We have logged in as {client.user}')
@@ -73,8 +77,8 @@ async def on_message(message):
     if message.content.startswith('!bye'):
         await message.channel.send('Untuk progress tidak perlu ke kelas, langsung k ruang dosen sesuai jadwal perkuliahan.')
     
-    if message.content.startswith('!ask'):
-        question = message.content[len('!ask '):]
+    if message.content.startswith('!basor'):
+        question = message.content[len('!basor '):]
         await message.channel.send(f"Processing your question: {question}")
         
         try:
@@ -82,13 +86,16 @@ async def on_message(message):
             try:
                 model = genai.GenerativeModel("gemini-2.0-flash")
                 response = model.generate_content(question)
-                await message.channel.send(response.text)
+                response_text = response.text
             except Exception as e:
                 # If client library fails, try direct API request
                 print(f"Client library failed: {e}")
                 await message.channel.send(f"Using fallback method...")
                 response_text = direct_gemini_request(question)
-                await message.channel.send(response_text)
+            
+            # Split the response into chunks if it's too long
+            for chunk in split_message(response_text):
+                await message.channel.send(chunk)
         except Exception as e:
             await message.channel.send(f"Sorry, I couldn't generate a response. Error: {str(e)}")
 
