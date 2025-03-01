@@ -4,6 +4,9 @@ import os
 import discord
 import requests
 import json
+import threading
+import time
+from flask import Flask
 
 # Load environment variables
 load_dotenv()
@@ -23,6 +26,17 @@ print(f"API Key loaded: {gemini_api_key[:5]}...{gemini_api_key[-5:] if gemini_ap
 # Configure Gemini API
 if gemini_api_key:
     genai.configure(api_key=gemini_api_key)
+
+# Initialize Flask app for keep-alive mechanism
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Basor AI is running!"
+
+@app.route('/health')
+def health():
+    return "OK", 200
 
 def test_gemini_api():
     """Test the Gemini API directly to verify the key works."""
@@ -58,6 +72,18 @@ def direct_gemini_request(prompt):
 def split_message(message, max_length=2000):
     """Split a message into chunks of a specified maximum length."""
     return [message[i:i+max_length] for i in range(0, len(message), max_length)]
+
+# Keep-alive function that pings our own app
+def keep_alive():
+    app_url = os.getenv('APP_URL', 'http://localhost:8000')
+    while True:
+        try:
+            response = requests.get(f"{app_url}/health")
+            print(f"Keep-alive ping sent, status: {response.status_code}")
+        except Exception as e:
+            print(f"Keep-alive error: {str(e)}")
+        # Sleep for 10 minutes before the next ping
+        time.sleep(600)  # 600 seconds = 10 minutes
 
 @client.event
 async def on_ready():
@@ -99,5 +125,12 @@ async def on_message(message):
         except Exception as e:
             await message.channel.send(f"Sorry, I couldn't generate a response. Error: {str(e)}")
 
+# Start the keep-alive thread
+def start_keep_alive():
+    thread = threading.Thread(target=keep_alive)
+    thread.daemon = True
+    thread.start()
+
 if __name__ == "__main__":
+    start_keep_alive()
     client.run(token=basor)

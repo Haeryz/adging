@@ -7,4 +7,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-CMD ["python", "basor_AI.py"]
+# Set the APP_URL environment variable
+ENV APP_URL=https://basorai-ffhwd5dzgqe7b7dm.southeastasia-01.azurewebsites.net/
+
+# Run the startup script instead of directly running basor_AI.py
+CMD ["python", "startup.py"]
